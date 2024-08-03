@@ -394,7 +394,7 @@ for episode in range(500):
         episode_reward += reward
         if x0[2] >= 590 and not goal_concentration_reached:
             goal_concentration_reached = True
-            timetaken = last_state[2]
+            timetaken = x0[2]
 
 
     name = directory_TD3_plot_G + str(episode + 1)
