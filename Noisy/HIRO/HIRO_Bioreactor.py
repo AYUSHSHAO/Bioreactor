@@ -763,7 +763,7 @@ def train():
     env_name = "mAb_control"
 
     save_episode = 5  # keep saving every n episodes
-    max_episodes = 500  # max num of training episodes
+    max_episodes = 100  # max num of training episodes
     random_seed = 0
     render = False
 
@@ -824,8 +824,8 @@ def train():
     # goal_offset_np = np.array([0])
     # goal_offset = torch.FloatTensor(goal_offset_np.reshape(1, -1)).to(device)
     # exploration noise std for primitive action and subgoals
-    exploration_action_noise = np.array([1])
-    exploration_state_noise = np.array([1])
+    exploration_action_noise = np.array([0.1])
+    exploration_state_noise = np.array([0.1])
     action_policy_noise = np.array([0.2])
     state_policy_noise = np.array([0.2])
     action_policy_clip = np.array([0.5])
@@ -918,7 +918,7 @@ def train():
         # print("lo",agent.lo)
         # agent.update(n_iter, batch_size)
         agent.episode_rewards.append(agent.reward)
-        agent.rmse.append(math.sqrt(agent.lo / 40))
+        agent.rmse.append(math.sqrt(agent.lo / 360))
         agent.IAE.append(agent.iae)
         agent.Protein_TD3_reward.append(agent.Protein)
 

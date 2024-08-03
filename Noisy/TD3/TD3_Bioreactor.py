@@ -381,6 +381,7 @@ for episode in range(100):
         viability.append(x0[5])
         state = x0  # concentration
         action = agent.get_action(np.array(state))
+
         flowrate.append(action[0])
         new_state, reward = get_state(action[0], t, x0)
         agent.memory.push(x0, action, reward, new_state)
