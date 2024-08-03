@@ -506,6 +506,7 @@ class HAC:
                  action_policy_noise, state_policy_noise, action_policy_clip, state_policy_clip, lr):
 
         # adding the lowest level
+
         self.HAC = [DDPG_Low(state_dim, action_dim, goal_dim, action_bounds, action_offset, policy_freq, tau, action_policy_noise, action_policy_clip, lr)]
         self.replay_buffer = [ReplayBuffer_Low()]
 
@@ -534,7 +535,8 @@ class HAC:
         self.lo = 0
         self.iae = 0
         self.timestep = 0
-        self.propylene_glycol = []
+        self.Protein = []
+        self.viability = []
         self.flowrate = []
         self.solved = False
 
@@ -675,7 +677,9 @@ class HAC:
             self.lo += (np.abs(next_state_noise_2 - final_goal) ** 2)
             self.iae += (np.abs(next_state_noise_2 - final_goal))
 
-            self.propylene_glycol.append(next_obs_noise[2])
+            self.Protein.append(next_obs_noise[2])  # output variable
+            self.viability.append(next_obs_noise[2][5])
+
             self.flowrate.append(action[0])
 
             # 2.2.3 compute step arguments
@@ -733,7 +737,7 @@ class HAC:
 
             # 2.2.10 update observations
 
-            if next_state[2] >= final_goal and not goal_concentration_reached:
+            if next_obs_noise[2] >= final_goal and not goal_concentration_reached:
                 goal_concentration_reached = True
                 self.timetaken = time
 
@@ -864,8 +868,8 @@ def train():
 
     # save trained models
     directory = "./preTrained/{}/{}level/".format(env_name, k_level)
-    directory_HIRO = "./HIRO/Reward_Plots/"
-    directory_HIRO_plot_G = "./HIRO/Plot_G/"
+    directory_HIRO = "./Reward_Plots/"
+    directory_HIRO_plot_G = "./Plot_G/"
     filename = "HAC_{}".format(env_name)
     #########################################################
 
@@ -898,8 +902,8 @@ def train():
     # set is a train case
     Test = False
 
-    x0 = [5400, 4.147507600512498, 107.96076361017765, 2.614975072822183, 1.8767447491163762,
-          98.31311438674405]
+    x0 = np.asarray([5400, 4.147507600512498, 107.96076361017765, 2.614975072822183, 1.8767447491163762,
+          98.31311438674405])
 
 
     for i_episode in range(1, max_episodes + 1):
@@ -907,7 +911,8 @@ def train():
         agent.reward = 0
         agent.lo = 0  # rmse
         agent.iae = 0
-        agent.propylene_glycol = []
+        agent.Protein = []
+        agent.viability = []
         agent.flowrate = []
 
         # agent.success = []
@@ -950,7 +955,7 @@ def train():
         print("RMSE:", agent.rmse[i_episode - 1])
 
         name = directory_HIRO_plot_G + str(i_episode)
-        plot_G(agent.propylene_glycol, tot_time, agent.flowrate, name)
+        plot_G(agent.Protein, tot_time, agent.flowrate, name)
 
     font1 = {'family': 'serif', 'size': 15}
     font2 = {'family': 'serif', 'size': 15}
@@ -986,4 +991,7 @@ def train():
 
     np.savetxt("CSTR_HIRO.csv", agent.CSTR, delimiter=",")
 
+
+if __name__ == '__main__':
+    train()
 

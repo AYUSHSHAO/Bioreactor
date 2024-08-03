@@ -359,14 +359,14 @@ episode_reward = []
 Protein_TD3_reward = []
 
 
-directory_TD3 = "./TD3/Reward_Plots/"
-directory_TD3_plot_G = "./TD3/Plot_G/"
+directory_TD3 = "./Reward_Plots/"
+directory_TD3_plot_G = "./Plot_G/"
 
-for episode in range(500):
+for episode in range(100):
     x0 = [5400, 4.147507600512498, 107.96076361017765, 2.614975072822183, 1.8767447491163762,
           98.31311438674405]  # 107.96076361017765
     time_taken = 0 # time taken by the system to reach the goal concentration
-
+    goal_concentration_reached = False
     t = 0
     Protein = []
     viability = []
@@ -394,18 +394,13 @@ for episode in range(500):
         episode_reward += reward
         if x0[2] >= 590 and not goal_concentration_reached:
             goal_concentration_reached = True
-            timetaken = x0[2]
+            time_taken = t
 
 
     name = directory_TD3_plot_G + str(episode + 1)
     plot_G(Protein, tot_time,flowrate, name)
     lo = math.sqrt(lo / 360)
     iae = iae
-
-    print("batch: ", episode + 1, " reward: ", episode_reward)
-    print("last state", x0[2])
-    print("Time taken: ", timetaken)
-    print("RMSE:", rmse[episode])
 
 
     rmse.append(lo)
@@ -415,6 +410,11 @@ for episode in range(500):
     avg_rmse.append(np.mean(rmse[-10:]))
     avg_IAE.append(np.mean(IAE[-10:]))
     Protein_TD3_reward.append(Protein)
+
+    print("batch: ", episode + 1, " reward: ", episode_reward)
+    print("last state", x0[2])
+    print("Time taken: ", time_taken)
+    print("RMSE:", rmse[episode])
 
     np.savetxt("C:\\Users\\Nikita\\Objective 3\\bioreactor\\Protein_TD3_reward.csv", Protein_TD3_reward, delimiter=",")
 
