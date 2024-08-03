@@ -195,7 +195,7 @@ class Actor_Low(nn.Module):
             nn.Linear(64, 64),
             nn.ReLU(),
             nn.Linear(64, action_dim),
-            nn.Tanh()
+            nn.Sigmoid()
         )
         # max value of actions
 
@@ -206,7 +206,7 @@ class Actor_Low(nn.Module):
 
         #return self.actor(torch.cat([state, goal], 1))
 
-        return self.actor(torch.cat([state, goal], 1))#*self.bounds + self.offset
+        return self.actor(torch.cat([state, goal], 1))*self.bounds + self.offset
 
 
 class Actor_High(nn.Module):
@@ -636,6 +636,7 @@ class HAC:
         # show_goal_achieve = True
         final_goal = self.goal
         next_obs_noise = None
+        goal_concentration_reached = False
         max_goal = torch.from_numpy(np.array(self.max_goal))
 
         steps = 0  # number of steps taken by agent
@@ -730,6 +731,11 @@ class HAC:
                 # 2.2.9 reset segment arguments & log (reward)
 
             # 2.2.10 update observations
+
+            if next_state[2] >= final_goal and not goal_concentration_reached:
+                goal_concentration_reached = True
+                self.timetaken = time
+
             state = next_obs_noise
             goal = next_goal
 
@@ -779,6 +785,7 @@ def train():
 
     high = np.array([5400, 9, 590, 10, 2.5, 96.5])
     # high = 590
+
     observation_space = spaces.Box(
         low=np.array(
             [5400, 4.147507600512498, 107.96076361017765, 2.614975072822183, 1.8767447491163762, 98.31311438674405]),
@@ -834,8 +841,8 @@ def train():
     action_policy_clip = np.array([0.5])
     state_policy_clip = np.array([0.5])
 
-    goal = np.array([0.143])  # final goal state to be achived
-    threshold = np.array([0.001])  # threshold value to check if goal state is achieved
+    goal = np.array([590])  # final goal state to be achived
+    threshold = np.array([1])  # threshold value to check if goal state is achieved
 
     # HAC parameters:
     k_level = 2  # num of levels in hierarchy
@@ -895,6 +902,7 @@ def train():
 
 
     for i_episode in range(1, max_episodes + 1):
+        agent.timetaken = 0  # time taken by the system to reach the goal concentration
         agent.reward = 0
         agent.lo = 0  # rmse
         agent.iae = 0
@@ -935,6 +943,10 @@ def train():
 
         print("Episode: {}\t Reward: {}".format(i_episode, agent.reward))
         print("state: ", last_state[2])
+        print("Episode: {}\t Reward: {}".format(i_episode, agent.reward))
+        print("state: ", last_state[2])
+        print("Time taken: ", agent.timetaken)
+        print("RMSE:", agent.rmse[i_episode - 1])
 
         name = directory_HIRO_plot_G + str(i_episode)
         plot_G(agent.propylene_glycol, tot_time, agent.flowrate, name)

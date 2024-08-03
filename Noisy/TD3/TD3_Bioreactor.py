@@ -263,7 +263,7 @@ class TD3(object):
 # In[7]:
 
 
-def plot_G(protein_ep, flowrate_ep):
+def plot_G(protein_ep, tot_time, flowrate_ep, name):
     time = np.linspace(0, tot_time, int(tot_time / dt))
     T1 = 590  # target
     ta = np.ones(int(tot_time / dt)) * T1
@@ -289,7 +289,8 @@ def plot_G(protein_ep, flowrate_ep):
 
     fig.tight_layout()  # otherwise the right y-label is slightly clipped
     # plt.savefig('deeprl_test1_batch1.jpg')
-    plt.show()
+    plt.savefig(name + '.png')
+    plt.close()
 
 
 # In[8]:
@@ -349,10 +350,17 @@ dt = 60
 rewards = []
 avg_rewards = []
 rmse = []
+IAE = []
+avg_rmse = []
+avg_IAE = []
 loss_p = []
 loss_c = []
 episode_reward = []
 Protein_TD3_reward = []
+
+
+directory_TD3 = "./TD3/Reward_Plots/"
+directory_TD3_plot_G = "./TD3/Plot_G/"
 
 for episode in range(500):
     x0 = [5400, 4.147507600512498, 107.96076361017765, 2.614975072822183, 1.8767447491163762,
@@ -383,14 +391,18 @@ for episode in range(500):
         reward = np.array(reward).flatten()
         episode_reward += reward
     print("batch: ", episode + 1)
-    plot_G(Protein, flowrate)
+    name = directory_TD3_plot_G + str(episode + 1)
+    plot_G(Protein, tot_time,flowrate, name)
     lo = math.sqrt(lo / 360)
     iae = iae
     print("rmse", lo)
     print("iae", iae)
     rmse.append(lo)
+    IAE.append(iae)
     rewards.append(episode_reward[0])
     avg_rewards.append(np.mean(rewards[-10:]))
+    avg_rmse.append(np.mean(rmse[-10:]))
+    avg_IAE.append(np.mean(IAE[-10:]))
     Protein_TD3_reward.append(Protein)
 
     np.savetxt("C:\\Users\\Nikita\\Objective 3\\bioreactor\\Protein_TD3_reward.csv", Protein_TD3_reward, delimiter=",")
@@ -405,40 +417,40 @@ font2 = {'family': 'serif', 'size': 15}
 
 
 
-plt.plot(avg_rewards)
-plt.xlabel("Number of episodes", fontdict=font1)
-plt.ylabel("Average Rewards", fontdict=font2)
-
-# In[ ]:
-
-
+plt.figure()
 plt.plot(rewards)
 plt.xlabel("Number of episodes", fontdict=font2)
 plt.ylabel("Rewards", fontdict=font2)
+plt.savefig(directory_TD3+'Reward_Per_Episode_TD3.png', bbox_inches = 'tight')
+plt.close()
 
+#plt.show()
+
+plt.figure()
+plt.plot(avg_rewards)
+plt.xlabel("Number of episodes", fontdict=font1)
+plt.ylabel("Average Rewards", fontdict=font2)
+plt.savefig(directory_TD3+'Average_Rewarde_TD3.png', bbox_inches = 'tight')
+plt.close()
+
+#plt.show()
 # In[ ]:
-
-
-R = [x.item() for x in rewards]
-plt.plot(R[-50:])
-
-# In[ ]:
-
-
-plt.plot(rmse)
+plt.figure()
+plt.plot(avg_rmse)
 plt.xlabel("Number of episodes", fontdict=font2)
-plt.ylabel("RMSE", fontdict=font2)
+plt.ylabel("Average RMSE", fontdict=font2)
+plt.savefig(directory_TD3+'RMSE_TD3.png', bbox_inches = 'tight')
+plt.close()
 
-# In[ ]:
+#plt.show()
 
+plt.figure()
+plt.plot(avg_IAE)
+plt.xlabel("Number of episodes", fontdict=font2)
+plt.ylabel("Average IAE", fontdict=font2)
+plt.savefig(directory_TD3+'IAE_TD3.png', bbox_inches = 'tight')
+plt.close()
 
-action = (80 + np.random.normal(1, 5, 1))
-action
-
-# In[ ]:
-
-
-# In[ ]:
 
 
 
