@@ -416,7 +416,7 @@ for episode in range(100):
     print("Time taken: ", time_taken)
     print("RMSE:", rmse[episode])
 
-    np.savetxt("C:\\Users\\Nikita\\Objective 3\\bioreactor\\Protein_TD3_reward.csv", Protein_TD3_reward, delimiter=",")
+    np.savetxt("Protein_TD3_reward.csv", Protein_TD3_reward, delimiter=",")
 
 # In[ ]:
 
