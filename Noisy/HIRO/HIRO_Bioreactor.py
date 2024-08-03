@@ -86,25 +86,7 @@ x0 = [5400, 4.147507600512498, 107.96076361017765, 2.614975072822183, 1.87674474
 
 seed = 12368
 torch.manual_seed(seed)
-high = np.array([5400, 9, 590 , 10, 2.5, 96.5])
-#high = 590
-observation_space = spaces.Box(
-            low=np.array([5400, 4.147507600512498, 107.96076361017765 , 2.614975072822183, 1.8767447491163762, 98.31311438674405]),
-            high=high,
-            dtype=np.float32
-        )
-high = np.array([5], dtype=np.float32)
-#high=310
-action_space = spaces.Box(
-            low=np.array([0.5]),
-            high=high,
-            dtype=np.float32
-        )
-action_space2 = spaces.Box(
-            low=np.array([5]),
-            high=np.array([0.5]),
-            dtype=np.float32
-        )
+
 
 
 def plot_G(protein_ep, tot_time, flowrate_ep, name):
@@ -778,3 +760,213 @@ class HAC:
     def load(self, directory, name):
         for i in range(self.k_level):
             self.HAC[i].load(directory, name + '_level_{}'.format(i))
+
+
+def train():
+    #################### Hyperparameters ####################
+    env_name = "mAb_control"
+
+    save_episode = 5  # keep saving every n episodes
+    max_episodes = 500  # max num of training episodes
+    random_seed = 0
+    render = False
+
+    """
+     Actions (both primitive and subgoal) are implemented as follows:
+       action = ( network output (Tanh) * bounds ) + offset
+       clip_high and clip_low bound the exploration noise
+    """
+
+    high = np.array([5400, 9, 590, 10, 2.5, 96.5])
+    # high = 590
+    observation_space = spaces.Box(
+        low=np.array(
+            [5400, 4.147507600512498, 107.96076361017765, 2.614975072822183, 1.8767447491163762, 98.31311438674405]),
+        high=high,
+        dtype=np.float32
+    )
+    high = np.array([5], dtype=np.float32)
+    # high=310
+    action_space = spaces.Box(
+        low=np.array([0.5]),
+        high=high,
+        dtype=np.float32
+    )
+    action_space2 = spaces.Box(
+        low=np.array([5]),
+        high=np.array([0.5]),
+        dtype=np.float32
+    )
+
+    # dimensions of action, state, and final goal
+    state_dim = observation_space.high.shape[0]
+    action_dim = action_space.high.shape[0]
+    goal_dim = 1  # goal is single dimension and the 3rd element of state array
+    goal_index = 2
+
+    # primitive action, goal, and state bounds and offset
+    action_offset_np = action_space.low[0]
+    action_bounds_np = action_space.high - action_space.low
+    # goal_offset_np = np.array([0])
+    action_offset = torch.FloatTensor(action_offset_np.reshape(1, -1)).to(device)
+    action_bounds = torch.FloatTensor(action_bounds_np.reshape(1, -1)).to(device)
+
+    action_clip_low = np.array(action_space.low[0])
+    action_clip_high = np.array(action_space.high[0])
+
+    # state bounds and offset
+    state_offset_np = observation_space.low
+    state_bounds_np = observation_space.high - observation_space.low
+    state_offset = torch.FloatTensor(state_offset_np.reshape(1, -1)).to(device)
+    state_bounds = torch.FloatTensor(state_bounds_np.reshape(1, -1)).to(device)
+    state_clip_low = np.array(observation_space.low)
+    state_clip_high = np.array(observation_space.high)
+    # max_goal = observation_space.high[2]
+    max_goal = np.array([10])
+    # goal offset
+    # goal_offset_np = np.array([0])
+    # goal_offset = torch.FloatTensor(goal_offset_np.reshape(1, -1)).to(device)
+    # exploration noise std for primitive action and subgoals
+    exploration_action_noise = np.array([1])
+    exploration_state_noise = np.array([1])
+    action_policy_noise = np.array([0.2])
+    state_policy_noise = np.array([0.2])
+    action_policy_clip = np.array([0.5])
+    state_policy_clip = np.array([0.5])
+
+    goal = np.array([0.143])  # final goal state to be achived
+    threshold = np.array([0.001])  # threshold value to check if goal state is achieved
+
+    # HAC parameters:
+    k_level = 2  # num of levels in hierarchy
+    c = 10  # time horizon to achieve subgoal
+    lamda = 0.3  # subgoal testing parameter
+
+    # DDPG parameters:
+    gamma = 0.95  # discount factor for future rewards
+    # n_iter = 100                # update policy n_iter times in one DDPG update
+    # changing the n_iter from 100 to 6
+    n_iter = 6
+    # batch_size = 100            # num of transitions sampled from replay buffer
+    # changing batch size from 100 to 5
+    batch_size = 5
+    lr = 0.001
+    policy_freq = 2  # policy frequency to update TD3
+    tau = 0.005
+
+    # save trained models
+    directory = "./preTrained/{}/{}level/".format(env_name, k_level)
+    directory_HIRO = "./HIRO/Reward_Plots/"
+    directory_HIRO_plot_G = "./HIRO/Plot_G/"
+    filename = "HAC_{}".format(env_name)
+    #########################################################
+
+    # creating HAC agent and setting parameters
+    # seed = 50
+    # torch.manual_seed(seed)
+
+    agent = HAC(k_level, policy_freq, tau, c, state_dim, action_dim, goal_dim, goal_index, goal, render, threshold,
+                action_offset, state_offset, action_bounds, state_bounds, max_goal, action_policy_noise,
+                state_policy_noise, action_policy_clip, state_policy_clip, lr)
+    agent.set_parameters(lamda, gamma, n_iter, batch_size, action_clip_low, action_clip_high,
+                         state_clip_low, state_clip_high, exploration_action_noise, exploration_state_noise)
+
+    # logging file:
+    log_f = open("log.txt", "w+")
+
+    # training procedure
+    # agent.success_rate = np.zeros(max_episodes)
+    agent.episode_rewards = []
+    agent.rmse = []
+    agent.IAE = []
+    agent.average_reward = []
+    agent.average_rmse = []
+    agent.average_iae = []
+
+    agent.CSTR = []
+    # success = np.zeros(max_episodes)
+    # successful = 0
+
+    # set is a train case
+    Test = False
+
+    for i_episode in range(1, max_episodes + 1):
+        agent.reward = 0
+        agent.lo = 0  # rmse
+        agent.iae = 0
+        agent.propylene_glycol = []
+        agent.flowrate = []
+
+        # agent.success = []
+        agent.timestep = 0
+        tot_time = 4
+        state = np.asarray([0, 3.45, 0, 0, np.random.normal(75, 0.02 * 75)])  # initial state
+        # collecting experience in environment
+        last_state = agent.run_HAC(get_state, k_level - 1, state, tot_time, Test)
+        # print("last sate",last_state[3])
+        if agent.check_goal(last_state, goal, threshold):
+            print("################ Solved! ################ ")
+            # successful = successful + 1
+            name = filename + '_solved'
+            agent.save(directory, name)
+
+        # update all levels
+        # print("lo",agent.lo)
+        # agent.update(n_iter, batch_size)
+        agent.episode_rewards.append(agent.reward)
+        agent.rmse.append(math.sqrt(agent.lo / 40))
+        agent.IAE.append(agent.iae)
+        agent.CSTR.append(agent.propylene_glycol)
+
+        agent.average_reward.append(np.mean(agent.episode_rewards[-10:]))
+        agent.average_rmse.append(np.mean(agent.rmse[-10:]))
+        agent.average_iae.append(np.mean(agent.IAE[-10:]))
+
+        # logging updates:
+        log_f.write('{},{}\n'.format(i_episode, agent.reward))
+        log_f.flush()
+        # print("Last State",last_state[3])
+        if i_episode % save_episode == 0:
+            agent.save(directory, filename)
+
+        print("Episode: {}\t Reward: {}".format(i_episode, agent.reward))
+        print("state: ", last_state[2])
+
+        name = directory_HIRO_plot_G + str(i_episode)
+        plot_G(agent.propylene_glycol, tot_time, agent.flowrate, name)
+
+    font1 = {'family': 'serif', 'size': 15}
+    font2 = {'family': 'serif', 'size': 15}
+
+    plt.figure()
+    plt.plot(agent.episode_rewards)
+    plt.xlabel("Number of episodes", fontdict=font2)
+    plt.ylabel("Rewards", fontdict=font2)
+    plt.savefig(directory_HIRO + 'Reward_Per_Episode_HIRO.png', bbox_inches='tight')
+    plt.close()
+    # plt.show()
+
+    plt.figure()
+    plt.plot(agent.average_reward)
+    plt.xlabel("Number of episodes", fontdict=font1)
+    plt.ylabel("Average Rewards", fontdict=font2)
+    plt.savefig(directory_HIRO + 'Average_Rewarde_HIRO.png', bbox_inches='tight')
+    plt.close()
+
+    plt.figure()
+    plt.plot(agent.average_rmse)
+    plt.xlabel("Number of episodes", fontdict=font2)
+    plt.ylabel("Average RMSE", fontdict=font2)
+    plt.savefig(directory_HIRO + 'RMSE_HIRO.png', bbox_inches='tight')
+    plt.close()
+
+    plt.figure()
+    plt.plot(agent.average_iae)
+    plt.xlabel("Number of episodes", fontdict=font2)
+    plt.ylabel("Average IAE", fontdict=font2)
+    plt.savefig(directory_HIRO + 'IAE_HIRO.png', bbox_inches='tight')
+    plt.close()
+
+    np.savetxt("CSTR_HIRO.csv", agent.CSTR, delimiter=",")
+
+
