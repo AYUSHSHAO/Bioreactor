@@ -365,6 +365,8 @@ directory_TD3_plot_G = "./TD3/Plot_G/"
 for episode in range(500):
     x0 = [5400, 4.147507600512498, 107.96076361017765, 2.614975072822183, 1.8767447491163762,
           98.31311438674405]  # 107.96076361017765
+    time_taken = 0 # time taken by the system to reach the goal concentration
+
     t = 0
     Protein = []
     viability = []
@@ -390,13 +392,22 @@ for episode in range(500):
         iae += np.abs(new_state[2] - 590)
         reward = np.array(reward).flatten()
         episode_reward += reward
-    print("batch: ", episode + 1)
+        if x0[2] >= 590 and not goal_concentration_reached:
+            goal_concentration_reached = True
+            timetaken = last_state[2]
+
+
     name = directory_TD3_plot_G + str(episode + 1)
     plot_G(Protein, tot_time,flowrate, name)
     lo = math.sqrt(lo / 360)
     iae = iae
-    print("rmse", lo)
-    print("iae", iae)
+
+    print("batch: ", episode + 1, " reward: ", episode_reward)
+    print("last state", x0[2])
+    print("Time taken: ", timetaken)
+    print("RMSE:", rmse[episode])
+
+
     rmse.append(lo)
     IAE.append(iae)
     rewards.append(episode_reward[0])

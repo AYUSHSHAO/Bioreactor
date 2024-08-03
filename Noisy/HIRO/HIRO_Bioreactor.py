@@ -830,7 +830,7 @@ def train():
     state_clip_low = np.array(observation_space.low)
     state_clip_high = np.array(observation_space.high)
     # max_goal = observation_space.high[2]
-    max_goal = np.array([10])
+    max_goal = np.array([590])
     # goal offset
     # goal_offset_np = np.array([0])
     # goal_offset = torch.FloatTensor(goal_offset_np.reshape(1, -1)).to(device)
