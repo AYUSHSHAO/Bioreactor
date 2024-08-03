@@ -412,6 +412,7 @@ for episode in range(500):
 
 # In[ ]:
 
+
 font1 = {'family': 'serif', 'size': 15}
 font2 = {'family': 'serif', 'size': 15}
 

@@ -671,6 +671,7 @@ class HAC:
             next_obs_noise = next_state_noise[0]
 
 
+
             self.lo += (np.abs(next_state_noise_2 - final_goal) ** 2)
             self.iae += (np.abs(next_state_noise_2 - final_goal))
 
