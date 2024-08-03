@@ -1,9 +1,10 @@
 import numpy as np
-
+import gym
+from gym import spaces
 tanh = np.tanh
 import matplotlib.pyplot as plt
 import math
-
+import torch
 pow = math.pow
 exp = np.exp
 import itertools
@@ -79,3 +80,35 @@ def get_state(action, ti, x0):
     #     rewards=-20*(np.abs(All[2]-protein_ref))-10*(np.abs(All[5]-viability_ref))-10*action
     rewards = -(abs(All[2] - 590))
     return All, rewards
+
+x0 = [5400, 4.147507600512498, 107.96076361017765, 2.614975072822183, 1.8767447491163762, 98.31311438674405]
+
+# seed=50
+
+seed = 12368
+torch.manual_seed(seed)
+high = np.array([5400, 9, 590 , 10, 2.5, 96.5])
+#high = 590
+observation_space = spaces.Box(
+            low=np.array([5400, 4.147507600512498, 107.96076361017765 , 2.614975072822183, 1.8767447491163762, 98.31311438674405]),
+            high=high,
+            dtype=np.float32
+        )
+high = np.array([5], dtype=np.float32)
+#high=310
+action_space = spaces.Box(
+            low=np.array([0.5]),
+            high=high,
+            dtype=np.float32
+        )
+action_space2 = spaces.Box(
+            low=np.array([5]),
+            high=np.array([0.5]),
+            dtype=np.float32
+        )
+
+#high = np.array([5,25,310.15], dtype=np.float32)
+#action_space = spaces.Box(
+            #low=np.array([0.5,1,308]),
+            #high=high,
+            #dtype=np.float32
