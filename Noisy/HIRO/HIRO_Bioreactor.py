@@ -22,6 +22,7 @@ import matplotlib.pyplot as plt
 
 global dt
 dt = 60
+tot_time = 15*24*60
 
 
 def get_state(action, ti, x0):
@@ -107,8 +108,32 @@ action_space2 = spaces.Box(
             dtype=np.float32
         )
 
-#high = np.array([5,25,310.15], dtype=np.float32)
-#action_space = spaces.Box(
-            #low=np.array([0.5,1,308]),
-            #high=high,
-            #dtype=np.float32
+
+def plot_G(protein_ep, flowrate_ep):
+    time = np.linspace(0, tot_time, int(tot_time / dt))
+    T1 = 590  # target
+    ta = np.ones(int(tot_time / dt)) * T1
+    fig, ax1 = plt.subplots()
+    # time = np.linspace(0,T,int(T/dt))
+    font1 = {'family': 'serif', 'size': 15}
+    font2 = {'family': 'serif', 'size': 15}
+    color = 'tab:red'
+    ax1.set_xlabel('time (min)', fontdict=font1)
+    ax1.set_ylabel('Protein Concentration', fontdict=font2, color=color)
+    ax1.plot(time, protein_ep, color=color)
+    ax1.plot(time, ta, color='tab:orange', linewidth=4, label='mAB reference concentration')
+    leg = ax1.legend(loc='lower right')
+
+    ax1.tick_params(axis='y', labelcolor=color)
+
+    ax2 = ax1.twinx()  # instantiate a second axes that shares the same x-axis
+    color = 'tab:blue'
+    ax2.set_ylabel('flowrate', fontdict=font2, color=color)  # we already handled the x-label with ax1
+    ax2.step(time, flowrate_ep, where='post', color=color)
+    ax2.tick_params(axis='y', labelcolor=color)
+    ax2.grid(color='g', linestyle='-', linewidth=1)
+
+    fig.tight_layout()  # otherwise the right y-label is slightly clipped
+    # plt.savefig('deeprl_test1_batch1.jpg')
+    plt.show()
+
