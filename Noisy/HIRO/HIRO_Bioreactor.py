@@ -900,7 +900,7 @@ def train():
         # agent.success = []
         agent.timestep = 0
         tot_time = 4
-        state = np.asarray([0, 3.45, 0, 0, np.random.normal(75, 0.02 * 75)])  # initial state
+        state = x0  # initial state
         # collecting experience in environment
         last_state = agent.run_HAC(get_state, k_level - 1, state, tot_time, Test)
         # print("last sate",last_state[3])
