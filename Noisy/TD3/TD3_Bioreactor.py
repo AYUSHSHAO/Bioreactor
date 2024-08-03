@@ -418,10 +418,6 @@ for episode in range(100):
 
     np.savetxt("Protein_TD3_reward.csv", Protein_TD3_reward, delimiter=",")
 
-# In[ ]:
-
-
-# In[ ]:
 
 
 font1 = {'family': 'serif', 'size': 15}

@@ -20,7 +20,7 @@ import matplotlib.pyplot as plt
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 global dt
 dt = 60
-tot_time = 15*24*60
+
 
 
 def get_state(action, ti, x0):
@@ -84,7 +84,7 @@ x0 = [5400, 4.147507600512498, 107.96076361017765, 2.614975072822183, 1.87674474
 
 # seed=50
 
-seed = 12368
+seed = 100
 torch.manual_seed(seed)
 
 
@@ -195,7 +195,7 @@ class Actor_Low(nn.Module):
             nn.Linear(64, 64),
             nn.ReLU(),
             nn.Linear(64, action_dim),
-            nn.Sigmoid()
+            nn.ReLU()
         )
         # max value of actions
 
@@ -206,7 +206,7 @@ class Actor_Low(nn.Module):
 
         #return self.actor(torch.cat([state, goal], 1))
 
-        return self.actor(torch.cat([state, goal], 1))*self.bounds + self.offset
+        return self.actor(torch.cat([state, goal], 1))#*self.bounds + self.offset
 
 
 class Actor_High(nn.Module):
@@ -219,7 +219,7 @@ class Actor_High(nn.Module):
             nn.Linear(64, 64),
             nn.ReLU(),
             nn.Linear(64, goal_dim),
-            nn.Sigmoid()
+            nn.ReLU()
         )
         # max value of actions
         self.offset = state_offset
@@ -228,7 +228,7 @@ class Actor_High(nn.Module):
         self.bounds = state_bound[:,goal_index]
 
     def forward(self, state):
-        return self.actor(state)*self.bounds + self.offset
+        return self.actor(state)#*self.bounds + self.offset
 
 
 class Critic_Low(nn.Module):
@@ -297,15 +297,7 @@ class DDPG_Low:
 
         return self.actor_Low(state, goal).detach().cpu().data.numpy().flatten()
 
-    def norm_action(self, action):
-        low = -1
-        high = 1
 
-        action = ((action - low) / (high - low))
-
-        action = 78 + action
-
-        return action
 
 
     def update_Low(self, buffer, n_iter, batch_size):
@@ -327,7 +319,7 @@ class DDPG_Low:
             noise = noise.clamp(-torch.from_numpy(self.action_policy_clip), torch.from_numpy(self.action_policy_clip))
 
             next_action = self.actor_Low_target(next_state, next_goal).detach()
-            next_action = self.norm_action(next_action)
+
             next_action = (next_action + noise).clamp(self.action_offset, self.action_offset+self.action_bounds).to(torch.float32)
             # take the minimum of 2 q-values ---> TD3
 
@@ -620,24 +612,16 @@ class HAC:
             return False
         return True
 
-    def norm_action(self, action):
-        low = -1
-        high = 1
 
-        action = ((action - low) / (high - low))
-
-        action = 78 + action
-
-        return action
 
     def run_HAC(self, env, i_level, state, tot_time, test):
 
-        time = 0.01
-        dt = 0.05
+        time = 0
+        dt = 60
 
         # show_goal_achieve = True
         final_goal = self.goal
-        next_obs_noise = None
+        next_state = None
         goal_concentration_reached = False
         max_goal = torch.from_numpy(np.array(self.max_goal))
 
@@ -656,10 +640,11 @@ class HAC:
         while time < tot_time:
             steps = steps + 1
             action = self.HAC[i_level - 1].select_action_Low(state, goal)  # action taken by lower level policy
-            action = self.norm_action(action)
+
             # action = norm_action(action)
 
             action = action + np.random.normal(1, self.exploration_action_noise)
+
             action = action.clip(self.action_clip_low, self.action_clip_high)
             # action = np.array([0.000000000000000000001])
 
@@ -667,18 +652,18 @@ class HAC:
             # print("state", state)
             next_state, reward = env(action, time, state)
 
-            next_state = np.array([next_state])
-            next_state_noise_2 = np.random.normal(next_state[:, 2], 0.01 * next_state[:, 2])
-            next_state_noise = np.concatenate((next_state[:, :2], np.array([next_state_noise_2]), next_state[:, 3:]), 1)
-            next_obs_noise = next_state_noise[0]
-
+            #next_state = np.array([next_state])
+            #next_state_noise_2 = np.random.normal(next_state[:, 2], 0.01 * next_state[:, 2])
+            #next_state_noise = np.concatenate((next_state[:, :2], np.array([next_state_noise_2]), next_state[:, 3:]), 1)
+            #next_obs_noise = next_state_noise[0]
+            next_state_noise_2 = next_state[2]
 
 
             self.lo += (np.abs(next_state_noise_2 - final_goal) ** 2)
             self.iae += (np.abs(next_state_noise_2 - final_goal))
 
-            self.Protein.append(next_obs_noise[2])  # output variable
-            self.viability.append(next_obs_noise[2][5])
+            self.Protein.append(next_state[2])  # output variable
+            self.viability.append(next_state[5])
 
             self.flowrate.append(action[0])
 
@@ -686,15 +671,15 @@ class HAC:
             # reward_h = self.dense_reward(state,final_goal)
             reward_h = reward
 
-            intri_reward = self.intrinsic_reward(state, goal, next_obs_noise)
+            intri_reward = self.intrinsic_reward(state, goal, next_state)
             self.reward += reward
-            next_goal = self.h_function(next_obs_noise, state, goal, self.goal_index)
+            next_goal = self.h_function(next_state, state, goal, self.goal_index)
             # next_goal = next_goal.clip(self.state_clip_low[self.goal_index], self.state_clip_high[self.goal_index])
 
             # print("next goal shape",next_goal.shape)
             # print("goal", next_goal)
             # 2.2.4 collect low-level experience
-            self.replay_buffer[i_level - 1].add((state, action, goal, intri_reward, next_obs_noise, next_goal, self.gamma))
+            self.replay_buffer[i_level - 1].add((state, action, goal, intri_reward, next_state, next_goal, self.gamma))
 
             state_sequence.append(torch.from_numpy(state))
             action_sequence.append(torch.from_numpy(action))
@@ -719,13 +704,13 @@ class HAC:
                 actor_target_l =  copy.deepcopy(self.HAC[i_level - 1].actor_Low)
 
                 # off-policy correction
-                goal_hat, updated = self.off_policy_correction(actor_target_l, action_sequence, state_sequence, self.goal_dim, self.goal_index, goal_sequence[0], next_obs_noise, max_goal, device)
+                #goal_hat, updated = self.off_policy_correction(actor_target_l, action_sequence, state_sequence, self.goal_dim, self.goal_index, goal_sequence[0], next_state, max_goal, device)
                 # print(goal_hat)
 
                 # self.replay_buffer[i_level].add(state, goal_hat, episode_reward_h, next_state, done_h)
                 # print("next goal", next_goal)
                 # print("goal hat", goal_hat)
-                self.replay_buffer[i_level].add((state_sequence[0], goal_hat, episode_reward_h, next_obs_noise,
+                self.replay_buffer[i_level].add((state_sequence[0], next_goal, episode_reward_h, next_state,
                                                  self.gamma))  # implement goal hat instead of next_goal
                 state_sequence, action_sequence, intri_reward_sequence, goal_sequence, reward_h_sequence = [], [], [], [], []
                 episode_reward_h = 0
@@ -737,16 +722,16 @@ class HAC:
 
             # 2.2.10 update observations
 
-            if next_obs_noise[2] >= final_goal and not goal_concentration_reached:
+            if next_state[2] >= final_goal and not goal_concentration_reached:
                 goal_concentration_reached = True
                 self.timetaken = time
 
-            state = next_obs_noise
+            state = next_state
             goal = next_goal
 
             time = time + dt
 
-            goal_achieved = self.check_goal(next_obs_noise, final_goal, self.threshold)
+            goal_achieved = self.check_goal(next_state, final_goal, self.threshold)
             # if goal_achieved and Train == True:
             # print("goal achieved in steps",t)
             # show_goal_achieve = False
@@ -754,7 +739,7 @@ class HAC:
             if goal_achieved and test == True:
                 self.solved = True
 
-        return next_obs_noise
+        return next_state
 
     def update(self, k_level, n_iter, batch_size):
         # def update(self, n_iter, batch_size):
@@ -834,7 +819,7 @@ def train():
     state_clip_low = np.array(observation_space.low)
     state_clip_high = np.array(observation_space.high)
     # max_goal = observation_space.high[2]
-    max_goal = np.array([590])
+    max_goal = np.array([600])
     # goal offset
     # goal_offset_np = np.array([0])
     # goal_offset = torch.FloatTensor(goal_offset_np.reshape(1, -1)).to(device)
@@ -895,7 +880,8 @@ def train():
     agent.average_rmse = []
     agent.average_iae = []
 
-    agent.CSTR = []
+    agent.Protein_TD3_reward = []
+
     # success = np.zeros(max_episodes)
     # successful = 0
 
@@ -917,7 +903,7 @@ def train():
 
         # agent.success = []
         agent.timestep = 0
-        tot_time = 4
+        tot_time = 15*24*60
         state = x0  # initial state
         # collecting experience in environment
         last_state = agent.run_HAC(get_state, k_level - 1, state, tot_time, Test)
@@ -934,7 +920,7 @@ def train():
         agent.episode_rewards.append(agent.reward)
         agent.rmse.append(math.sqrt(agent.lo / 40))
         agent.IAE.append(agent.iae)
-        agent.CSTR.append(agent.propylene_glycol)
+        agent.Protein_TD3_reward.append(agent.Protein)
 
         agent.average_reward.append(np.mean(agent.episode_rewards[-10:]))
         agent.average_rmse.append(np.mean(agent.rmse[-10:]))
@@ -947,8 +933,7 @@ def train():
         if i_episode % save_episode == 0:
             agent.save(directory, filename)
 
-        print("Episode: {}\t Reward: {}".format(i_episode, agent.reward))
-        print("state: ", last_state[2])
+
         print("Episode: {}\t Reward: {}".format(i_episode, agent.reward))
         print("state: ", last_state[2])
         print("Time taken: ", agent.timetaken)
@@ -989,7 +974,7 @@ def train():
     plt.savefig(directory_HIRO + 'IAE_HIRO.png', bbox_inches='tight')
     plt.close()
 
-    np.savetxt("CSTR_HIRO.csv", agent.CSTR, delimiter=",")
+    np.savetxt("Protein_TD3_reward.csv", agent.Protein_TD3_reward, delimiter=",")
 
 
 if __name__ == '__main__':
