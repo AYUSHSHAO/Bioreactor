@@ -1,35 +1,32 @@
-#!/usr/bin/env python
-# coding: utf-8
-
-# In[1]:
-
-
 import numpy as np
-
 tanh = np.tanh
-import matplotlib.pyplot as plt
 import math
-
 pow = math.pow
 exp = np.exp
-import itertools
-import time
-import random
-from math import exp as exp
-
-# In[2]:
-
-
+import sys
+from gym import spaces
+import torch.nn.functional as F
+import torch.autograd
+from torch.autograd import Variable
+import torch
+import torch.autograd
+import torch.optim as optim
+import torch.nn as nn
 from math import exp
-import numpy as np
 from scipy.integrate import odeint
 import matplotlib.pyplot as plt
+import numpy as np
+from collections import deque
+import random
 
-global dt
-dt = 60
 
 
-def get_state(action, ti, x0):
+seed = 12368
+random.seed(seed)
+torch.manual_seed(seed)
+np.random.seed(seed)
+
+def get_state(action, dt, ti, x0):
     flowrate = action  # ml/day
     gf = 18  # mg/ml total inlet clucose(20)
     T = 308  # K temperature(310)
@@ -95,9 +92,7 @@ x0 = [5400, 4.147507600512498, 107.96076361017765, 2.614975072822183, 1.87674474
 # In[4]:
 
 
-import numpy as np
-from collections import deque
-import random
+
 
 
 class Memory:
@@ -132,11 +127,7 @@ class Memory:
 # In[5]:
 
 
-import torch
-import torch.nn as nn
-import torch.nn.functional as F
-import torch.autograd
-from torch.autograd import Variable
+
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -189,10 +180,7 @@ class Critic(nn.Module):
 # In[6]:
 
 
-import torch
-import torch.autograd
-import torch.optim as optim
-import torch.nn as nn
+
 
 
 class TD3(object):
@@ -296,16 +284,11 @@ def plot_G(protein_ep, tot_time, flowrate_ep, name):
 # In[8]:
 
 
-import sys
-import numpy as np
-import pandas as pd
-import matplotlib.pyplot as plt
-from gym import spaces
+
 
 # seed=50
 
-seed = 12368
-torch.manual_seed(seed)
+
 high = np.array([5400, 9, 590, 10, 2.5, 96.5])
 # high = 590
 observation_space = spaces.Box(
@@ -336,13 +319,10 @@ action_space2 = spaces.Box(
 agent = TD3(action_space.shape[0], observation_space.shape[0], max_action=action_space.high[0],
             min_action=action_space.low[0], num_actions=action_space.shape[0])
 
-# In[9]:
 
 
-seed = 12368
-random.seed(seed)
-torch.manual_seed(seed)
-np.random.seed(seed)
+
+
 
 batch_size = 6
 tot_time = 15 * 24 * 60
@@ -385,7 +365,7 @@ for episode in range(100):
         action = agent.get_action(np.array(state))
 
         flowrate.append(action[0])
-        new_state, reward = get_state(action[0], t, x0)
+        new_state, reward = get_state(action[0], dt, t, x0)
         agent.memory.push(x0, action, reward, new_state)
         if len(agent.memory) > batch_size:
             agent.train(6, batch_size)
@@ -422,7 +402,10 @@ for episode in range(100):
     print("Time taken: ", time_taken)
     print("RMSE:", rmse[episode])
 
-    np.savetxt("Protein_TD3_reward.csv", Protein_TD3_reward, delimiter=",")
+print("Least Time", Least_Time)
+print("Least Time Episode", Least_Time_Episode)
+
+np.savetxt("Protein_TD3_reward.csv", Protein_TD3_reward, delimiter=",")
 
 
 

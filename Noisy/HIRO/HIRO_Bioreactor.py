@@ -1,8 +1,7 @@
+import sys
 import numpy as np
-import gym
 from gym import spaces
 tanh = np.tanh
-import matplotlib.pyplot as plt
 import math
 import torch
 pow = math.pow
@@ -16,14 +15,16 @@ from math import exp
 import numpy as np
 from scipy.integrate import odeint
 import matplotlib.pyplot as plt
+import random
+
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-global dt
-dt = 60
 
 
 
-def get_state(action, ti, x0):
+
+
+def get_state(action, dt, ti, x0):
     flowrate = action  # ml/day
     gf = 18  # mg/ml total inlet clucose(20)
     T = 308  # K temperature(310)
@@ -84,8 +85,10 @@ x0 = [5400, 4.147507600512498, 107.96076361017765, 2.614975072822183, 1.87674474
 
 # seed=50
 
-seed = 100
+seed = 12368
+random.seed(seed)
 torch.manual_seed(seed)
+np.random.seed(seed)
 
 
 
@@ -493,7 +496,7 @@ class DDPG_High:
 
 
 class HAC:
-    def __init__(self, k_level, policy_freq, tau, c, state_dim, action_dim, goal_dim, goal_index, goal, render,
+    def __init__(self, k_level, policy_freq, tau, c, state_dim, action_dim, goal_dim, goal_index, goal,
                  threshold, action_offset, state_offset, action_bounds, state_bounds, max_goal,
                  action_policy_noise, state_policy_noise, action_policy_clip, state_policy_clip, lr):
 
@@ -517,7 +520,6 @@ class HAC:
         self.action_dim = action_dim
         self.state_dim = state_dim
         self.threshold = threshold
-        self.render = render
         self.action_bounds = action_bounds
         self.action_offset = action_offset
 
@@ -614,10 +616,9 @@ class HAC:
 
 
 
-    def run_HAC(self, env, i_level, state, tot_time, test):
+    def run_HAC(self, env, i_level, state, start_time, tot_time, dt, test):
 
-        time = 0
-        dt = 60
+        time = start_time
 
         # show_goal_achieve = True
         final_goal = self.goal
@@ -650,7 +651,7 @@ class HAC:
 
             # 2.2.2 interact environment
             # print("state", state)
-            next_state, reward = env(action, time, state)
+            next_state, reward = env(action, dt, time, state)
 
             #next_state = np.array([next_state])
             #next_state_noise_2 = np.random.normal(next_state[:, 2], 0.01 * next_state[:, 2])
@@ -844,6 +845,7 @@ def train():
     lr = 0.001
     policy_freq = 2  # policy frequency to update TD3
     tau = 0.005
+    dt = 60
 
     # save trained models
     directory = "./preTrained/{}/{}level/".format(env_name, k_level)
@@ -856,7 +858,7 @@ def train():
     # seed = 50
     # torch.manual_seed(seed)
 
-    agent = HAC(k_level, policy_freq, tau, c, state_dim, action_dim, goal_dim, goal_index, goal, render, threshold,
+    agent = HAC(k_level, policy_freq, tau, c, state_dim, action_dim, goal_dim, goal_index, goal, threshold,
                 action_offset, state_offset, action_bounds, state_bounds, max_goal, action_policy_noise,
                 state_policy_noise, action_policy_clip, state_policy_clip, lr)
     agent.set_parameters(lamda, gamma, n_iter, batch_size, action_clip_low, action_clip_high,
@@ -873,8 +875,10 @@ def train():
     agent.average_reward = []
     agent.average_rmse = []
     agent.average_iae = []
-
     agent.Protein_TD3_reward = []
+    Least_Time = sys.maxsize  # minimum time in which goal concentration is achieved
+    Least_Time_Episode = 0  # episode in which least time is achieved
+    start_time = 0
 
     # success = np.zeros(max_episodes)
     # successful = 0
@@ -884,6 +888,8 @@ def train():
 
     x0 = np.asarray([5400, 4.147507600512498, 107.96076361017765, 2.614975072822183, 1.8767447491163762,
           98.31311438674405])
+
+
 
 
     for i_episode in range(1, max_episodes + 1):
@@ -900,7 +906,7 @@ def train():
         tot_time = 15*24*60
         state = x0  # initial state
         # collecting experience in environment
-        last_state = agent.run_HAC(get_state, k_level - 1, state, tot_time, Test)
+        last_state = agent.run_HAC(get_state, k_level - 1, state, start_time, tot_time, dt, Test)
         # print("last sate",last_state[3])
         if agent.check_goal(last_state, goal, threshold):
             print("################ Solved! ################ ")
@@ -920,6 +926,10 @@ def train():
         agent.average_rmse.append(np.mean(agent.rmse[-10:]))
         agent.average_iae.append(np.mean(agent.IAE[-10:]))
 
+        if agent.timetaken < Least_Time:
+            Least_Time = agent.timetaken
+            Least_Time_Episode = i_episode
+
         # logging updates:
         log_f.write('{},{}\n'.format(i_episode, agent.reward))
         log_f.flush()
@@ -935,6 +945,10 @@ def train():
 
         name = directory_HIRO_plot_G + str(i_episode)
         plot_G(agent.Protein, tot_time, agent.flowrate, name)
+
+    print("Least Time",Least_Time)
+    print("Least Time Episode", Least_Time_Episode)
+
 
     font1 = {'family': 'serif', 'size': 15}
     font2 = {'family': 'serif', 'size': 15}
