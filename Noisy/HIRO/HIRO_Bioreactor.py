@@ -92,7 +92,7 @@ np.random.seed(seed)
 
 
 
-def plot_G(protein_ep, tot_time, flowrate_ep, name):
+def plot_G(protein_ep, dt, tot_time, flowrate_ep, name):
     time = np.linspace(0, tot_time, int(tot_time / dt))
     T1 = 590  # target
     ta = np.ones(int(tot_time / dt)) * T1
@@ -926,7 +926,7 @@ def train():
         agent.average_rmse.append(np.mean(agent.rmse[-10:]))
         agent.average_iae.append(np.mean(agent.IAE[-10:]))
 
-        if agent.timetaken < Least_Time:
+        if agent.timetaken < Least_Time and agent.timetaken != 0:
             Least_Time = agent.timetaken
             Least_Time_Episode = i_episode
 
@@ -944,7 +944,7 @@ def train():
         print("RMSE:", agent.rmse[i_episode - 1])
 
         name = directory_HIRO_plot_G + str(i_episode)
-        plot_G(agent.Protein, tot_time, agent.flowrate, name)
+        plot_G(agent.Protein, dt, tot_time, agent.flowrate, name)
 
     print("Least Time",Least_Time)
     print("Least Time Episode", Least_Time_Episode)

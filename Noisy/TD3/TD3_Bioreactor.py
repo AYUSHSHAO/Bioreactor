@@ -251,7 +251,7 @@ class TD3(object):
 # In[7]:
 
 
-def plot_G(protein_ep, tot_time, flowrate_ep, name):
+def plot_G(protein_ep, dt, tot_time, flowrate_ep, name):
     time = np.linspace(0, tot_time, int(tot_time / dt))
     T1 = 590  # target
     ta = np.ones(int(tot_time / dt)) * T1
@@ -381,11 +381,11 @@ for episode in range(100):
 
 
     name = directory_TD3_plot_G + str(episode + 1)
-    plot_G(Protein, tot_time,flowrate, name)
+    plot_G(Protein, dt, tot_time,flowrate, name)
     lo = math.sqrt(lo / 360)
     iae = iae
 
-    if time_taken < Least_Time:
+    if time_taken < Least_Time and time_taken != 0:
         Least_Time = time_taken
         Least_Time_Episode = episode + 1
 
