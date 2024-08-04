@@ -764,14 +764,8 @@ def train():
 
     save_episode = 5  # keep saving every n episodes
     max_episodes = 100  # max num of training episodes
-    random_seed = 0
-    render = False
 
-    """
-     Actions (both primitive and subgoal) are implemented as follows:
-       action = ( network output (Tanh) * bounds ) + offset
-       clip_high and clip_low bound the exploration noise
-    """
+
 
     high = np.array([5400, 9, 590, 10, 2.5, 96.5])
     # high = 590

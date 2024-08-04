@@ -357,6 +357,8 @@ loss_p = []
 loss_c = []
 episode_reward = []
 Protein_TD3_reward = []
+Least_Time = sys.maxsize  # minimum time in which goal concentration is achieved
+Least_Time_Episode = 0 # episode in which least time is achieved
 
 
 directory_TD3 = "./Reward_Plots/"
@@ -367,13 +369,13 @@ for episode in range(100):
           98.31311438674405]  # 107.96076361017765
     time_taken = 0 # time taken by the system to reach the goal concentration
     goal_concentration_reached = False
+
     t = 0
     Protein = []
     viability = []
     flowrate = []
     episode_reward = 0
     total_reward = 0
-    episode_reward = 0
     lo = 0  # rmse
     iae = 0
     while t < tot_time:
@@ -403,6 +405,9 @@ for episode in range(100):
     lo = math.sqrt(lo / 360)
     iae = iae
 
+    if time_taken < Least_Time:
+        Least_Time = time_taken
+        Least_Time_Episode = episode + 1
 
     rmse.append(lo)
     IAE.append(iae)
